@@ -3,28 +3,28 @@ using UnityEngine.SceneManagement;
 
 public class FlutterBridge : MonoBehaviour
 {
-    // متغير ثابت عشان نتأكد إن مفيش غير نسخة واحدة بس من الأوبجكت ده
+    // Singleton instance to ensure only one instance of this object exists
     public static FlutterBridge instance;
 
     void Awake()
     {
-        // 1. لو النسخة دي لسه مش موجودة، احجزها وامنع تدميرها
+        // 1. If instance doesn't exist, assign it and persist across scenes
         if (instance == null)
         {
             instance = this;
-            DontDestroyOnLoad(gameObject); // الأمر ده هو اللي بيخليه يكمل معاك في كل السينز
+            DontDestroyOnLoad(gameObject); // Keeps the object alive during scene changes
         }
-        // 2. لو في نسخة موجودة أصلاً (مثلاً لما رجعت للمنيو تاني)، دمر النسخة الجديدة دي فوراً
+        // 2. If an instance already exists (e.g., returning to menu), destroy the duplicate
         else
         {
             Destroy(gameObject);
         }
     }
 
-    // دي الدالة اللي فلاتر هينده عليها
+    // Method called by Flutter via Unity Message Manager
     public void HandleMessage(string message)
     {
-        // نتأكد إن الرسالة مفيش فيها مسافات زيادة
+        // Remove any leading or trailing whitespace from the message
         message = message.Trim();
 
         switch (message)
@@ -43,8 +43,8 @@ public class FlutterBridge : MonoBehaviour
 
             case "EXIT":
                 Application.Quit();
-                // السطر ده عشان تعرف إن الأمر وصل وأنت بتجرب في الـ Editor لأن Quit مش بتشتغل غير في الـ Build
-                Debug.Log("Game Exiting..."); 
+                // Log for Editor testing, as Application.Quit() only works in builds
+                Debug.Log("Game Exiting...");
                 break;
 
             default:
