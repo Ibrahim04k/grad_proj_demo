@@ -8,17 +8,6 @@ public class FlutterBridge : MonoBehaviour
 
     void Awake()
     {
-        // 1. If instance doesn't exist, assign it and persist across scenes
-        if (instance == null)
-        {
-            instance = this;
-            DontDestroyOnLoad(gameObject); // Keeps the object alive during scene changes
-        }
-        // 2. If an instance already exists (e.g., returning to menu), destroy the duplicate
-        else
-        {
-            Destroy(gameObject);
-        }
     }
 
     // Method called by Flutter via Unity Message Manager
