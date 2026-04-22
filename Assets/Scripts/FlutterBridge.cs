@@ -27,17 +27,21 @@ public class FlutterBridge : MonoBehaviour
         // Remove any leading or trailing whitespace from the message
         message = message.Trim();
 
+        // Convert the message to all capital letters
+        message = message.ToUpperInvariant();
+
+
         switch (message)
         {
             case "MENU":
                 SceneManager.LoadScene(0);
                 break;
 
-            case "ROMA":
+            case "EGYPT":
                 SceneManager.LoadScene(1);
                 break;
 
-            case "EGYPT":
+            case "ROMA":
                 SceneManager.LoadScene(2);
                 break;
 
