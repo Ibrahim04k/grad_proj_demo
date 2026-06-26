@@ -14,10 +14,6 @@ public class NPCVoiceController : MonoBehaviour
     [Header("Server")]
     public string serverUrl = "wss://gizmo-battering-moaning.ngrok-free.dev/ws/npc";
 
-    [Header("Push To Talk")]
-    [Tooltip("Hold this key to record. Release to send to the NPC server.")]
-    public Key pushToTalkKey = Key.M;
-
     [Header("World Context")]
     public int yearRangeMin = 1000;
     public int yearRangeMax = 1100;
@@ -84,18 +80,10 @@ public class NPCVoiceController : MonoBehaviour
             action?.Invoke();
         }
 
-        // ── Push-to-Talk (configurable key, set in Inspector) ───────────
-        if (Keyboard.current == null) return;
-
-        if (Keyboard.current[pushToTalkKey].wasPressedThisFrame)
-        {
-            StartRecording();
-        }
-
-        if (Keyboard.current[pushToTalkKey].wasReleasedThisFrame)
-        {
-            StopRecordingAndSend();
-        }
+        // NOTE: Push-to-talk input is no longer handled here.
+        // The player's NPCVoiceTrigger script calls StartRecording() /
+        // StopRecordingAndSend() on whichever NPC is currently "active"
+        // (see NPCInteractionZone.cs).
     }
 
     void OnApplicationQuit()

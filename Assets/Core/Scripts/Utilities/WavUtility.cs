@@ -54,60 +54,92 @@ public static class WavUtility
         using (MemoryStream stream = new MemoryStream(wavBytes))
         using (BinaryReader reader = new BinaryReader(stream))
         {
-            reader.ReadBytes(4); // RIFF
-            reader.ReadInt32(); // chunkSize
-            reader.ReadBytes(4); // WAVE
+            // --- Read the RIFF/WAVE file header (12 bytes) ---
+            string riff = new string(reader.ReadChars(4));  // "RIFF"
+            reader.ReadInt32();                              // chunkSize (ignored)
+            string wave = new string(reader.ReadChars(4));  // "WAVE"
 
-            int channels = 1;
-            int sampleRate = 16000;
-            int bitsPerSample = 16;
-
-            // Look for the "fmt " chunk
-            while (stream.Position < stream.Length)
+            if (riff != "RIFF" || wave != "WAVE")
             {
-                string chunkId = new string(reader.ReadChars(4));
-                int chunkSize = reader.ReadInt32();
+                Debug.LogError("WavUtility: Not a valid WAV file.");
+                return null;
+            }
+
+            int channels      = 1;
+            int sampleRate    = 16000;
+            int bitsPerSample = 16;
+            float[] audioData = null;
+
+            // --- Single forward pass: iterate every chunk until EOF ---
+            while (stream.Position + 8 <= stream.Length) // need at least 4-char ID + int32 size
+            {
+                string chunkId   = new string(reader.ReadChars(4));
+                int    chunkSize = reader.ReadInt32();
+
                 if (chunkId == "fmt ")
                 {
-                    reader.ReadInt16(); // audioFormat
-                    channels = reader.ReadInt16();
-                    sampleRate = reader.ReadInt32();
-                    reader.ReadInt32(); // byteRate
-                    reader.ReadInt16(); // blockAlign
+                    // Minimum fmt chunk is 16 bytes (PCM)
+                    reader.ReadInt16();               // audioFormat (1 = PCM)
+                    channels      = reader.ReadInt16();
+                    sampleRate    = reader.ReadInt32();
+                    reader.ReadInt32();               // byteRate
+                    reader.ReadInt16();               // blockAlign
                     bitsPerSample = reader.ReadInt16();
-                    if (chunkSize > 16) reader.ReadBytes(chunkSize - 16); // skip extra 
-                    break;
-                }
-                stream.Position += chunkSize;
-            }
 
-            stream.Position = 12; // Reset back and look for "data" chunk
-            int dataSize = 0;
-            while (stream.Position < stream.Length)
-            {
-                string chunkId = new string(reader.ReadChars(4));
-                int chunkSize = reader.ReadInt32();
-                if (chunkId == "data")
+                    // Skip any extra fmt bytes (e.g. extensible format)
+                    int extraBytes = chunkSize - 16;
+                    if (extraBytes > 0)
+                        reader.ReadBytes(extraBytes);
+                }
+                else if (chunkId == "data")
                 {
-                    dataSize = chunkSize;
-                    break;
+                    int sampleCount = chunkSize / (bitsPerSample / 8);
+                    audioData = new float[sampleCount];
+
+                    if (bitsPerSample == 16)
+                    {
+                        for (int i = 0; i < sampleCount; i++)
+                        {
+                            // Guard against truncated files
+                            if (stream.Position + 2 > stream.Length) break;
+                            short sample = reader.ReadInt16();
+                            audioData[i] = sample / 32768f;
+                        }
+                    }
+                    else if (bitsPerSample == 8)
+                    {
+                        for (int i = 0; i < sampleCount; i++)
+                        {
+                            if (stream.Position + 1 > stream.Length) break;
+                            audioData[i] = (reader.ReadByte() - 128) / 128f;
+                        }
+                    }
+
+                    break; // "data" is always the last chunk we need
                 }
-                stream.Position += chunkSize;
-            }
-
-            int sampleCount = dataSize / (bitsPerSample / 8);
-            float[] audioData = new float[sampleCount];
-
-            if (bitsPerSample == 16)
-            {
-                for (int i = 0; i < sampleCount; i++)
+                else
                 {
-                    short sample = reader.ReadInt16();
-                    audioData[i] = sample / 32768f;
+                    // Unknown/metadata chunk (e.g. "LIST", "ID3 ", "bext") — skip it.
+                    // Chunks must be word-aligned; odd sizes are padded by 1 byte.
+                    long skipAmount = chunkSize + (chunkSize % 2);
+                    stream.Position = Math.Min(stream.Position + skipAmount, stream.Length);
                 }
             }
 
-            AudioClip clip = AudioClip.Create("NPCVoice", sampleCount / channels, channels, sampleRate, false);
+            if (audioData == null)
+            {
+                Debug.LogError("WavUtility: No 'data' chunk found in WAV bytes.");
+                return null;
+            }
+
+            int totalSamples = audioData.Length;
+            AudioClip clip = AudioClip.Create(
+                "NPCVoice",
+                totalSamples / channels,
+                channels,
+                sampleRate,
+                false
+            );
             clip.SetData(audioData, 0);
             return clip;
         }

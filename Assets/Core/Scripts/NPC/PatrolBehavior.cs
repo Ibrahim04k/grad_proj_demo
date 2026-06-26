@@ -6,6 +6,8 @@ using UnityEngine.AI;
 public class PatrolBehavior : MonoBehaviour
 {
     public Transform[] waypoints;
+    [Tooltip("Patrol movement speed. Lower = slower. Default NavMeshAgent speed is typically 3.5.")]
+    public float patrolSpeed = 1.5f;
     private int currentPoint = 0;
     private NavMeshAgent agent;
     private NPCController animController;
@@ -14,8 +16,9 @@ public class PatrolBehavior : MonoBehaviour
     {
         agent = GetComponent<NavMeshAgent>();
         animController = GetComponent<NPCController>();
-        
-        agent.autoBraking = false; 
+
+        agent.speed = patrolSpeed;
+        agent.autoBraking = false;
 
         GotoNextPoint();
     }

@@ -8,6 +8,7 @@ public class FlutterBridge : MonoBehaviour
 
     void Awake()
     {
+        instance = this; // fix this
     }
 
     // Method called by Flutter via Unity Message Manager
